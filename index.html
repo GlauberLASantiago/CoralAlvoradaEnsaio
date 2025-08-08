@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Áudios para ensaio</title>
+    <title>MP3 Player Dinâmico</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -98,7 +98,7 @@
         
         <!-- Footer com instruções -->
         <div class="bg-[#053D47] text-center p-4 text-xs text-gray-400">
-            <p>Para adicionar novas músicas, envie arquivos .mp3 para a pasta 'audio' no seu repositório do GitHub.</p>
+            <p>Para adicionar novas músicas, envie arquivos .mp3 para a pasta raiz do seu repositório do GitHub.</p>
         </div>
     </div>
 
@@ -109,7 +109,7 @@
         // Altere os valores abaixo com os seus dados do GitHub.
         const GITHUB_USER = "glauberlasantiago"; // Substitua pelo seu nome de usuário
         const GITHUB_REPO = "CoralAlvoradaEnsaio";   // Substitua pelo nome do seu repositório
-        const AUDIO_FOLDER_PATH = "audio";       // Nome da pasta onde estão os arquivos .mp3
+        const AUDIO_FOLDER_PATH = "";       // Deixe em branco para usar a pasta raiz
 
         // --- ELEMENTOS DO DOM ---
         const audioPlayer = document.getElementById('audio-player');
@@ -168,7 +168,7 @@
         function renderPlaylist() {
             playlistEl.innerHTML = ''; // Limpa a playlist antes de renderizar
             if (playlist.length === 0) {
-                playlistEl.innerHTML = `<div class="text-gray-400 p-4 text-center">Nenhuma música encontrada na pasta '${AUDIO_FOLDER_PATH}'.</div>`;
+                playlistEl.innerHTML = `<div class="text-gray-400 p-4 text-center">Nenhuma música encontrada na pasta raiz.</div>`;
                 return;
             }
 
