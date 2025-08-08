@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MP3 Player Dinâmico</title>
+    <title>Áudios para ensaio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -59,7 +59,7 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <h2 class="text-xl font-bold truncate" id="current-song-title">Selecione uma música</h2>
-                    <p class="text-sm text-gray-300" id="current-song-artist">Meu Player de MP3</p>
+                    <p class="text-sm text-gray-300" id="current-song-artist">Coral Alvorada - Ensaio</p>
                 </div>
             </div>
         </div>
@@ -107,8 +107,8 @@
     <script>
         // --- CONFIGURAÇÃO ---
         // Altere os valores abaixo com os seus dados do GitHub.
-        const GITHUB_USER = "seu-usuario-github"; // Substitua pelo seu nome de usuário
-        const GITHUB_REPO = "seu-repositorio";   // Substitua pelo nome do seu repositório
+        const GITHUB_USER = "glauberlasantiago"; // Substitua pelo seu nome de usuário
+        const GITHUB_REPO = "CoralAlvoradaEnsaio";   // Substitua pelo nome do seu repositório
         const AUDIO_FOLDER_PATH = "audio";       // Nome da pasta onde estão os arquivos .mp3
 
         // --- ELEMENTOS DO DOM ---
@@ -121,6 +121,7 @@
         const currentTimeEl = document.getElementById('current-time');
         const durationEl = document.getElementById('duration');
         const currentSongTitleEl = document.getElementById('current-song-title');
+        const currentSongArtistEl = document.getElementById('current-song-artist');
         const playlistEl = document.getElementById('playlist');
         const loader = document.getElementById('loader');
 
