@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP3 Player Dinâmico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #00111B; /* Cor de fundo principal */
+        }
+        /* Estilo customizado para a barra de progresso */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #FC5E1E; /* Laranja */
+            cursor: pointer;
+            margin-top: -6px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #FC5E1E; /* Laranja */
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .playlist-item:hover {
+            background-color: #264B2F; /* Verde Escuro */
+        }
+        .playlist-item.playing {
+            background-color: #FC5E1E; /* Laranja */
+            color: #FFFFFF;
+        }
+        .playlist-item.playing i {
+            color: #FFFFFF;
+        }
+        .loader-icon {
+            color: #75FF31; /* Verde Lima */
+        }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md bg-[#053D47] rounded-2xl shadow-2xl overflow-hidden">
+        
+        <!-- Player Display -->
+        <div class="p-6 bg-[#053D47]/50 backdrop-blur-sm">
+            <div class="flex items-center space-x-4">
+                <div class="bg-[#264B2F] w-24 h-24 rounded-lg flex items-center justify-center shadow-lg">
+                    <i class="fas fa-music text-5xl text-gray-300"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-xl font-bold truncate" id="current-song-title">Selecione uma música</h2>
+                    <p class="text-sm text-gray-300" id="current-song-artist">Meu Player de MP3</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controles e Barra de Progresso -->
+        <div class="p-6 bg-[#053D47]">
+             <div class="flex items-center justify-between text-xs text-gray-300 mb-2">
+                <span id="current-time">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+            <input type="range" id="progress-bar" value="0" class="w-full h-1.5 bg-[#264B2F] rounded-lg appearance-none cursor-pointer">
+           
+            <div class="flex items-center justify-center space-x-8 mt-4">
+                <button id="prev-btn" class="text-gray-300 hover:text-white transition-colors duration-200">
+                    <i class="fas fa-backward-step fa-2x"></i>
+                </button>
+                <button id="play-pause-btn" class="bg-[#FC5E1E] text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-80 transition-all duration-200">
+                    <i id="play-pause-icon" class="fas fa-play fa-2x"></i>
+                </button>
+                <button id="next-btn" class="text-gray-300 hover:text-white transition-colors duration-200">
+                    <i class="fas fa-forward-step fa-2x"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Playlist -->
+        <div class="bg-[#00111B] p-4">
+            <h3 class="text-lg font-semibold mb-2 px-2">Playlist</h3>
+            <div id="playlist" class="max-h-60 overflow-y-auto">
+                <!-- Músicas serão inseridas aqui pelo JavaScript -->
+                <div id="loader" class="text-center p-4">
+                    <i class="fas fa-spinner fa-spin mr-2 loader-icon"></i> Carregando músicas...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer com instruções -->
+        <div class="bg-[#053D47] text-center p-4 text-xs text-gray-400">
+            <p>Para adicionar novas músicas, envie arquivos .mp3 para a pasta 'audio' no seu repositório do GitHub.</p>
+        </div>
+    </div>
+
+    <audio id="audio-player" class="hidden"></audio>
+
+    <script>
+        // --- CONFIGURAÇÃO ---
+        // Altere os valores abaixo com os seus dados do GitHub.
+        const GITHUB_USER = "seu-usuario-github"; // Substitua pelo seu nome de usuário
+        const GITHUB_REPO = "seu-repositorio";   // Substitua pelo nome do seu repositório
+        const AUDIO_FOLDER_PATH = "audio";       // Nome da pasta onde estão os arquivos .mp3
+
+        // --- ELEMENTOS DO DOM ---
+        const audioPlayer = document.getElementById('audio-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+        const currentSongTitleEl = document.getElementById('current-song-title');
+        const playlistEl = document.getElementById('playlist');
+        const loader = document.getElementById('loader');
+
+        // --- ESTADO DO PLAYER ---
+        let playlist = [];
+        let currentSongIndex = -1;
+        let isPlaying = false;
+
+        // --- FUNÇÕES DO PLAYER ---
+
+        /**
+         * Busca os arquivos de áudio do repositório do GitHub e constrói a playlist.
+         */
+        async function fetchAndBuildPlaylist() {
+            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${AUDIO_FOLDER_PATH}`;
+            
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar dados: ${response.statusText}. Verifique as configurações de usuário e repositório.`);
+                }
+                const files = await response.json();
+                
+                playlist = files
+                    .filter(file => file.name.toLowerCase().endsWith('.mp3'))
+                    .map(file => ({
+                        name: file.name.replace('.mp3', '').replace(/_/g, ' ').replace(/-/g, ' - '), // Limpa o nome do arquivo
+                        url: file.download_url
+                    }));
+
+                renderPlaylist();
+
+            } catch (error) {
+                console.error("Falha ao carregar a playlist:", error);
+                playlistEl.innerHTML = `<div class="text-red-400 p-4 text-center">${error.message}</div>`;
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        /**
+         * Renderiza a playlist na interface.
+         */
+        function renderPlaylist() {
+            playlistEl.innerHTML = ''; // Limpa a playlist antes de renderizar
+            if (playlist.length === 0) {
+                playlistEl.innerHTML = `<div class="text-gray-400 p-4 text-center">Nenhuma música encontrada na pasta '${AUDIO_FOLDER_PATH}'.</div>`;
+                return;
+            }
+
+            playlist.forEach((song, index) => {
+                const songItem = document.createElement('div');
+                songItem.className = 'playlist-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition-colors duration-200';
+                songItem.innerHTML = `
+                    <i class="fas fa-music text-gray-400 transition-colors duration-200"></i>
+                    <span class="flex-1 truncate">${song.name}</span>
+                `;
+                songItem.addEventListener('click', () => loadSong(index));
+                playlistEl.appendChild(songItem);
+            });
+        }
+        
+        /**
+         * Carrega uma música pelo seu índice na playlist.
+         * @param {number} index - O índice da música na playlist.
+         */
+        function loadSong(index) {
+            if (index < 0 || index >= playlist.length) return;
+            
+            currentSongIndex = index;
+            const song = playlist[currentSongIndex];
+            
+            audioPlayer.src = song.url;
+            currentSongTitleEl.textContent = song.name;
+            
+            updatePlayingUI();
+            playSong();
+        }
+
+        /**
+         * Toca a música atual.
+         */
+        function playSong() {
+            isPlaying = true;
+            audioPlayer.play();
+            playPauseIcon.classList.remove('fa-play');
+            playPauseIcon.classList.add('fa-pause');
+        }
+
+        /**
+         * Pausa a música atual.
+         */
+        function pauseSong() {
+            isPlaying = false;
+            audioPlayer.pause();
+            playPauseIcon.classList.remove('fa-pause');
+            playPauseIcon.classList.add('fa-play');
+        }
+
+        /**
+         * Alterna entre tocar e pausar.
+         */
+        function togglePlayPause() {
+            if (currentSongIndex === -1 && playlist.length > 0) {
+                loadSong(0); // Se nenhuma música foi tocada ainda, começa com a primeira
+            } else if (playlist.length > 0) {
+                isPlaying ? pauseSong() : playSong();
+            }
+        }
+
+        /**
+         * Toca a música anterior na playlist.
+         */
+        function playPrevious() {
+            if (playlist.length === 0) return;
+            const newIndex = (currentSongIndex - 1 + playlist.length) % playlist.length;
+            loadSong(newIndex);
+        }
+
+        /**
+         * Toca a próxima música na playlist.
+         */
+        function playNext() {
+            if (playlist.length === 0) return;
+            const newIndex = (currentSongIndex + 1) % playlist.length;
+            loadSong(newIndex);
+        }
+        
+        /**
+         * Atualiza a barra de progresso e os tempos.
+         * @param {Event} e - O evento 'timeupdate' do elemento de áudio.
+         */
+        function updateProgress(e) {
+            const { duration, currentTime } = e.srcElement;
+            if (duration) {
+                const progressPercent = (currentTime / duration) * 100;
+                progressBar.value = progressPercent;
+
+                // Atualiza o tempo atual
+                let currentMinutes = Math.floor(currentTime / 60);
+                let currentSeconds = Math.floor(currentTime % 60);
+                if (currentSeconds < 10) {
+                    currentSeconds = `0${currentSeconds}`;
+                }
+                currentTimeEl.textContent = `${currentMinutes}:${currentSeconds}`;
+
+                // Atualiza a duração total (apenas uma vez)
+                let durationMinutes = Math.floor(duration / 60);
+                let durationSeconds = Math.floor(duration % 60);
+                 if (durationSeconds < 10) {
+                    durationSeconds = `0${durationSeconds}`;
+                }
+                durationEl.textContent = `${durationMinutes}:${durationSeconds}`;
+            }
+        }
+
+        /**
+         * Permite navegar na música usando a barra de progresso.
+         */
+        function setProgress(e) {
+            const duration = audioPlayer.duration;
+            if (duration) {
+                audioPlayer.currentTime = (progressBar.value / 100) * duration;
+            }
+        }
+        
+        /**
+         * Atualiza a interface para destacar a música que está tocando.
+         */
+        function updatePlayingUI() {
+            const songItems = document.querySelectorAll('.playlist-item');
+            songItems.forEach((item, index) => {
+                if (index === currentSongIndex) {
+                    item.classList.add('playing');
+                } else {
+                    item.classList.remove('playing');
+                }
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        prevBtn.addEventListener('click', playPrevious);
+        nextBtn.addEventListener('click', playNext);
+        audioPlayer.addEventListener('timeupdate', updateProgress);
+        audioPlayer.addEventListener('ended', playNext); // Toca a próxima quando a atual termina
+        progressBar.addEventListener('input', setProgress);
+
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', fetchAndBuildPlaylist);
+
+    </script>
+</body>
+</html>
