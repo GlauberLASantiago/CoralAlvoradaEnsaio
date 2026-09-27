@@ -13,7 +13,7 @@ A proposta é oferecer aos integrantes do coral uma ferramenta prática para ouv
   - play e pause
   - música anterior
   - próxima música
-  - progresso da faixa
+  - forma de onda e progresso interativos
   - volume
   - loop
 - Destaque visual da música em reprodução
@@ -63,7 +63,7 @@ O player ignora arquivos vazios ou menores que 1 KB, tenta mais de um endpoint d
    - voltar ou avançar faixas
    - ajustar o volume
    - ativar ou desativar o loop
-   - navegar pela barra de progresso
+   - navegar pela forma de onda da faixa
 
 ## 🎧 Recursos do player
 
@@ -72,8 +72,8 @@ O player oferece:
 - reprodução contínua entre faixas;
 - seleção manual de músicas;
 - controle visual da faixa atual;
-- barra de progresso interativa;
-- ajuste de volume em tempo real;
+- forma de onda real e interativa para acompanhar ou alterar o ponto de reprodução;
+- ajuste de volume em tempo real, com slider visível também no celular;
 - opção de repetição da música.
 
 ## 🌐 Integração com GitHub
