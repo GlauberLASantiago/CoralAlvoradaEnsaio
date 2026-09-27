@@ -39,6 +39,9 @@
             background-color: #FC5E1E; /* Laranja */
             color: #FFFFFF;
         }
+        .playlist-item.unavailable {
+            opacity: 0.55;
+        }
         .loader-icon {
             color: #75FF31; /* Verde Lima */
         }
@@ -55,6 +58,7 @@
         <div class="p-8 bg-[#053D47]/50 backdrop-blur-sm text-center">
             <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold" id="current-song-title">Selecione uma música</h2>
+                <p id="player-status" class="text-sm text-gray-300 mt-2 min-h-5" role="status" aria-live="polite"></p>
             </div>
         </div>
 
@@ -110,13 +114,15 @@
         </div>
     </div>
 
-    <audio id="audio-player" class="hidden"></audio>
+    <audio id="audio-player" class="hidden" preload="metadata"></audio>
 
     <script>
         // --- CONFIGURAÇÃO ---
         const GITHUB_USER = "glauberlasantiago";
         const GITHUB_REPO = "CoralAlvoradaEnsaio";
+        const GITHUB_BRANCH = "main";
         const AUDIO_FOLDER_PATH = ""; // Em branco para usar a pasta raiz
+        const MIN_AUDIO_SIZE = 1024; // Um MP3 real não terá apenas alguns bytes
 
         // --- ELEMENTOS DO DOM ---
         const audioPlayer = document.getElementById('audio-player');
@@ -133,12 +139,15 @@
         const loopBtn = document.getElementById('loop-btn');
         const volumeSlider = document.getElementById('volume-slider');
         const volumeIcon = document.getElementById('volume-icon');
+        const playerStatusEl = document.getElementById('player-status');
 
         // --- ESTADO DO PLAYER ---
         let playlist = [];
         let currentSongIndex = -1;
         let isPlaying = false;
         let isLooping = true;
+        let sourceAttempt = 0;
+        let playRequested = false;
 
         // --- INICIALIZAÇÃO DO PLAYER ---
         audioPlayer.loop = isLooping;
@@ -149,28 +158,88 @@
         /**
          * Busca os arquivos de áudio do repositório do GitHub e constrói a playlist.
          */
-        async function fetchAndBuildPlaylist() {
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${AUDIO_FOLDER_PATH}`;
-            
-            try {
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`Erro ao buscar dados: ${response.statusText}. Verifique as configurações.`);
-                }
-                const files = await response.json();
-                
-                playlist = files
-                    .filter(file => file.name.toLowerCase().endsWith('.mp3'))
-                    .map(file => ({
-                        name: file.name.replace('.mp3', '').replace(/_/g, ' ').replace(/-/g, ' - '),
-                        url: file.download_url
-                    }));
+        async function fetchJson(url) {
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: { Accept: 'application/vnd.github+json' }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        }
 
-                renderPlaylist();
+        function encodePath(path) {
+            return path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+        }
+
+        function buildSourceCandidates(path, downloadUrl) {
+            const encodedPath = encodePath(path);
+            const relativeUrl = new URL(encodedPath, document.baseURI).href;
+            const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${encodedPath}`;
+            const repositoryUrl = `https://github.com/${GITHUB_USER}/${GITHUB_REPO}/raw/refs/heads/${GITHUB_BRANCH}/${encodedPath}`;
+            return [...new Set([relativeUrl, downloadUrl, rawUrl, repositoryUrl].filter(Boolean))];
+        }
+
+        async function fetchFilesFromGitHub() {
+            const folder = encodePath(AUDIO_FOLDER_PATH);
+            const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${folder}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+            const files = await fetchJson(url);
+            return files.map(file => ({
+                path: file.path,
+                name: file.name,
+                size: file.size,
+                downloadUrl: file.download_url
+            }));
+        }
+
+        async function fetchFilesFromGitTree() {
+            const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/git/trees/${encodeURIComponent(GITHUB_BRANCH)}?recursive=1`;
+            const data = await fetchJson(url);
+            const folder = AUDIO_FOLDER_PATH.replace(/^\/+|\/+$/g, '');
+            const folderPrefix = folder ? `${folder}/` : '';
+            return data.tree
+                .filter(file => {
+                    if (file.type !== 'blob' || !file.path.startsWith(folderPrefix)) return false;
+                    return !file.path.slice(folderPrefix.length).includes('/');
+                })
+                .map(file => ({
+                    path: file.path,
+                    name: file.path.split('/').pop(),
+                    size: file.size,
+                    downloadUrl: null
+                }));
+        }
+
+        async function fetchAndBuildPlaylist() {
+            try {
+                let files;
+                try {
+                    files = await fetchFilesFromGitHub();
+                } catch (githubError) {
+                    console.warn('Catálogo principal indisponível; usando a árvore Git.', githubError);
+                    files = await fetchFilesFromGitTree();
+                }
+
+                const mp3Files = files.filter(file => file.name.toLowerCase().endsWith('.mp3'));
+                const invalidFiles = mp3Files.filter(file => Number(file.size) < MIN_AUDIO_SIZE);
+                playlist = files
+                    .filter(file => file.name.toLowerCase().endsWith('.mp3') && Number(file.size) >= MIN_AUDIO_SIZE)
+                    .map(file => ({
+                        name: file.name.replace(/\.mp3$/i, '').replace(/_/g, ' '),
+                        path: file.path,
+                        sources: buildSourceCandidates(file.path, file.downloadUrl),
+                        unavailable: false
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+
+                renderPlaylist(invalidFiles.length);
 
             } catch (error) {
                 console.error("Falha ao carregar a playlist:", error);
-                playlistEl.innerHTML = `<div class="text-red-400 p-4 text-center">${error.message}</div>`;
+                playlistEl.innerHTML = '';
+                const message = document.createElement('div');
+                message.className = 'text-red-400 p-4 text-center';
+                message.textContent = 'Não foi possível obter a lista de músicas. Verifique a conexão e recarregue a página.';
+                playlistEl.appendChild(message);
             } finally {
                 loader.style.display = 'none';
             }
@@ -179,19 +248,28 @@
         /**
          * Renderiza a playlist na interface.
          */
-        function renderPlaylist() {
+        function renderPlaylist(invalidCount = 0) {
             playlistEl.innerHTML = '';
             if (playlist.length === 0) {
                 playlistEl.innerHTML = `<div class="text-gray-400 p-4 text-center">Nenhuma música encontrada.</div>`;
                 return;
             }
 
+            if (invalidCount > 0) {
+                const warning = document.createElement('div');
+                warning.className = 'text-amber-300 text-xs px-3 pb-3';
+                warning.textContent = `${invalidCount} arquivo(s) vazio(s) ou inválido(s) foram ignorados.`;
+                playlistEl.appendChild(warning);
+            }
+
             playlist.forEach((song, index) => {
                 const songItem = document.createElement('div');
                 songItem.className = 'playlist-item p-3 rounded-lg cursor-pointer flex items-center transition-colors duration-200';
-                songItem.innerHTML = `
-                    <span class="flex-1 truncate font-medium">${song.name}</span>
-                `;
+                songItem.dataset.index = index;
+                const title = document.createElement('span');
+                title.className = 'flex-1 truncate font-medium';
+                title.textContent = song.name;
+                songItem.appendChild(title);
                 songItem.addEventListener('click', () => loadSong(index));
                 playlistEl.appendChild(songItem);
             });
@@ -203,23 +281,46 @@
         function loadSong(index) {
             if (index < 0 || index >= playlist.length) return;
             currentSongIndex = index;
+            sourceAttempt = 0;
+            playRequested = true;
             const song = playlist[currentSongIndex];
-            audioPlayer.src = song.url;
+            song.unavailable = false;
             currentSongTitleEl.textContent = song.name;
+            playerStatusEl.textContent = 'Carregando áudio...';
             updatePlayingUI();
-            playSong();
+            loadCurrentSource();
         }
 
-        function playSong() {
-            isPlaying = true;
-            audioPlayer.play();
-            playPauseIcon.classList.replace('fa-play', 'fa-pause');
+        function loadCurrentSource() {
+            const song = playlist[currentSongIndex];
+            if (!song || sourceAttempt >= song.sources.length) {
+                handleAllSourcesFailed();
+                return;
+            }
+            audioPlayer.src = song.sources[sourceAttempt];
+            audioPlayer.load();
+            if (playRequested) playSong();
+        }
+
+        async function playSong() {
+            if (!audioPlayer.src) return;
+            playRequested = true;
+            try {
+                await audioPlayer.play();
+            } catch (error) {
+                // Falhas de rede/formato também disparam o evento "error" do áudio.
+                if (error.name === 'NotAllowedError') {
+                    playRequested = false;
+                    setPlayingState(false);
+                    playerStatusEl.textContent = 'Toque novamente em reproduzir para iniciar o áudio.';
+                }
+            }
         }
 
         function pauseSong() {
-            isPlaying = false;
+            playRequested = false;
             audioPlayer.pause();
-            playPauseIcon.classList.replace('fa-pause', 'fa-play');
+            setPlayingState(false);
         }
 
         function togglePlayPause() {
@@ -238,8 +339,40 @@
 
         function playNext() {
             if (playlist.length === 0) return;
-            const newIndex = (currentSongIndex + 1) % playlist.length;
+            let newIndex = currentSongIndex;
+            for (let attempt = 0; attempt < playlist.length; attempt++) {
+                newIndex = (newIndex + 1) % playlist.length;
+                if (!playlist[newIndex].unavailable) break;
+            }
             loadSong(newIndex);
+        }
+
+        function handleAudioError() {
+            const song = playlist[currentSongIndex];
+            if (!song) return;
+            sourceAttempt += 1;
+            if (sourceAttempt < song.sources.length) {
+                playerStatusEl.textContent = `Tentando outra fonte (${sourceAttempt + 1}/${song.sources.length})...`;
+                loadCurrentSource();
+            } else {
+                handleAllSourcesFailed();
+            }
+        }
+
+        function handleAllSourcesFailed() {
+            const song = playlist[currentSongIndex];
+            if (!song) return;
+            song.unavailable = true;
+            playRequested = false;
+            setPlayingState(false);
+            playerStatusEl.textContent = 'Arquivo indisponível ou inválido. Envie novamente um MP3 válido ao repositório.';
+            updatePlayingUI();
+        }
+
+        function setPlayingState(playing) {
+            isPlaying = playing;
+            playPauseIcon.classList.toggle('fa-pause', playing);
+            playPauseIcon.classList.toggle('fa-play', !playing);
         }
         
         function updateProgress(e) {
@@ -280,10 +413,12 @@
         function updatePlayingUI() {
             document.querySelectorAll('.playlist-item').forEach((item, index) => {
                 item.classList.toggle('playing', index === currentSongIndex);
+                item.classList.toggle('unavailable', playlist[index]?.unavailable === true);
             });
         }
 
         function formatTime(seconds) {
+            if (!Number.isFinite(seconds)) return '0:00';
             const minutes = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
             return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
@@ -296,6 +431,14 @@
         loopBtn.addEventListener('click', toggleLoop);
         volumeSlider.addEventListener('input', setVolume);
         audioPlayer.addEventListener('timeupdate', updateProgress);
+        audioPlayer.addEventListener('playing', () => {
+            setPlayingState(true);
+            playerStatusEl.textContent = '';
+        });
+        audioPlayer.addEventListener('waiting', () => {
+            if (playRequested) playerStatusEl.textContent = 'Carregando áudio...';
+        });
+        audioPlayer.addEventListener('error', handleAudioError);
         audioPlayer.addEventListener('ended', playNext);
         progressBar.addEventListener('input', setProgress);
         document.addEventListener('DOMContentLoaded', fetchAndBuildPlaylist);

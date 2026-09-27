@@ -47,6 +47,10 @@ A aplicação consulta a API do GitHub para listar os arquivos de áudio dispon�
 3. permite ao usuário escolher ou controlar a reprodução das faixas;
 4. toca os áudios diretamente a partir dos links de download do GitHub.
 
+O player ignora arquivos vazios ou menores que 1 KB, tenta mais de um endpoint do GitHub quando uma fonte falha e exibe uma mensagem clara caso o arquivo enviado não seja um MP3 válido.
+
+> **Importante:** renomear um arquivo vazio para `.mp3` não o transforma em áudio. Antes de enviar, confirme que o arquivo toca localmente e tem tamanho maior que 1 KB. Depois do envio, aguarde a conclusão do commit/deploy e recarregue a página.
+
 ## ▶️ Como usar
 
 1. Abra a página da aplicação em um navegador moderno.
