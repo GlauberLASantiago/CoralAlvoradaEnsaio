@@ -115,7 +115,7 @@ Os áudios são organizados desta forma:
 - `Pasta-4`: arquivos cujo nome começa com `4`;
 - `Pasta-5`: arquivos cujo nome começa com `5`.
 
-O arquivo `catalog.json` é processado durante o deploy e permite que novos MP3 enviados a essas pastas apareçam automaticamente no site.
+O arquivo `catalog.json` é processado durante o deploy. Novos MP3 e novas pastas de primeiro nível aparecem automaticamente no site. Para manter uma pasta vazia no Git, adicione a ela um arquivo chamado `.gitkeep`.
 
 ## ✅ Possíveis usos
 

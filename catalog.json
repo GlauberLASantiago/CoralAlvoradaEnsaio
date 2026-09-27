@@ -3,7 +3,9 @@ layout: null
 ---
 [
 {% assign audio_files = site.static_files | where: "extname", ".mp3" %}
-{% for file in audio_files %}
+{% assign keep_files = site.static_files | where: "name", ".gitkeep" %}
+{% assign catalog_files = audio_files | concat: keep_files %}
+{% for file in catalog_files %}
   {"path": {{ file.path | remove_first: "/" | jsonify }}}{% unless forloop.last %},{% endunless %}
 {% endfor %}
 ]
