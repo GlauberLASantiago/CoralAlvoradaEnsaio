@@ -45,8 +45,9 @@ A aplicação usa um catálogo gerado automaticamente pelo GitHub Pages e, se ne
 1. organiza os arquivos `.mp3` nas seis coleções configuradas;
 2. permite ao usuário escolher primeiro uma pasta;
 3. apresenta somente as faixas daquela pasta;
-4. permite controlar a reprodução das faixas;
-5. toca os áudios diretamente do site ou por links alternativos do GitHub.
+4. permite voltar à página inicial para trocar de pasta;
+5. permite controlar a reprodução das faixas;
+6. toca os áudios diretamente do site ou por links alternativos do GitHub.
 
 O player ignora arquivos vazios ou menores que 1 KB, tenta mais de um endpoint do GitHub quando uma fonte falha e exibe uma mensagem clara caso o arquivo enviado não seja um MP3 válido.
 

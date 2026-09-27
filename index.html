@@ -54,12 +54,9 @@
         .hero-copy { max-width: 580px; margin: 12px auto 0; color: rgba(245,222,179,.86); font-size: 1.04rem; }
         .content { padding: 28px 30px 34px; }
         .section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-        .step-number {
-            display: inline-grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center;
-            border-radius: 50%; color: white; background: var(--indian-red); font-weight: 700;
-        }
         .section-heading h2 { margin: 0; color: #fff8e8; font-size: 1.15rem; }
-        .folder-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 30px; }
+        [hidden] { display: none !important; }
+        .folder-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
         .folder-button {
             min-height: 92px; padding: 15px; border: 1px solid var(--border); border-radius: 16px;
             color: var(--wheat); background: rgba(70,130,180,.18); cursor: pointer; text-align: left;
@@ -70,6 +67,14 @@
         .folder-button:disabled { cursor: wait; opacity: .72; }
         .folder-name { display: block; font-weight: 600; line-height: 1.15; }
         .folder-count { display: block; margin-top: 7px; font-size: .83rem; opacity: .78; }
+        .player-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+        .back-button {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 15px; border: 1px solid var(--border);
+            border-radius: 999px; color: var(--wheat); background: rgba(70,130,180,.2); cursor: pointer;
+            font-weight: 600; transition: background 160ms ease,border-color 160ms ease,transform 160ms ease;
+        }
+        .back-button:hover { border-color: var(--wheat); background: rgba(70,130,180,.38); transform: translateX(-2px); }
+        .collection-name { color: rgba(245,222,179,.76); font-weight: 600; text-align: right; }
         .player-panel { border: 1px solid var(--border); border-radius: 20px; background: rgba(20,43,43,.58); }
         .now-playing { min-height: 112px; display: grid; place-items: center; padding: 22px; text-align: center; border-bottom: 1px solid var(--border); }
         .now-playing h3 { margin: 0; color: white; font-size: clamp(1.05rem,3.5vw,1.38rem); }
@@ -103,7 +108,6 @@
         .playlist-item:hover { border-color: rgba(245,222,179,.35); background: rgba(70,130,180,.22); }
         .playlist-item.playing { color: white; border-color: var(--indian-red); background: rgba(205,92,92,.82); }
         .playlist-item.unavailable { opacity: .48; }
-        .track-number { display: inline-grid; width: 29px; height: 29px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: white; background: var(--saddle-brown); font-size: .78rem; font-weight: 600; }
         .track-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
         .empty-state, .loading-state, .error-state { padding: 28px 18px; border: 1px dashed var(--border); border-radius: 14px; color: rgba(245,222,179,.78); text-align: center; }
         .error-state { color: #ffd2d2; border-color: rgba(205,92,92,.7); }
@@ -120,6 +124,8 @@
             .volume-control input { display: none; }
             .track-toolbar { align-items: flex-start; flex-direction: column; gap: 6px; }
             #selected-folder-label { text-align: left; }
+            .player-header { align-items: flex-start; flex-direction: column; }
+            .collection-name { text-align: left; }
         }
         @media (max-width: 390px) { .folder-grid { grid-template-columns: 1fr; } .folder-button { min-height: 74px; } }
     </style>
@@ -133,32 +139,38 @@
                 <p class="hero-copy">Escolha uma coleção e pratique sua faixa com tranquilidade.</p>
             </header>
             <div class="content">
-                <section aria-labelledby="folder-heading">
-                    <div class="section-heading"><span class="step-number" aria-hidden="true">1</span><h2 id="folder-heading">Escolha uma pasta</h2></div>
+                <section id="home-view" aria-labelledby="folder-heading">
+                    <div class="section-heading"><h2 id="folder-heading">Escolha uma pasta</h2></div>
                     <div id="folder-grid" class="folder-grid" aria-live="polite"></div>
                 </section>
-                <section class="player-panel" aria-label="Player de áudio">
-                    <div class="now-playing"><div><h3 id="current-song-title">Escolha uma pasta para começar</h3><p id="player-status" role="status" aria-live="polite"></p></div></div>
-                    <div class="controls">
-                        <div class="time-row"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
-                        <input type="range" id="progress-bar" min="0" max="100" value="0" aria-label="Progresso da faixa">
-                        <div class="control-row">
-                            <button id="loop-btn" class="icon-button" type="button" title="Repetir faixa" aria-label="Repetir faixa" aria-pressed="false">↻</button>
-                            <div class="main-controls">
-                                <button id="prev-btn" class="icon-button" type="button" title="Faixa anterior" aria-label="Faixa anterior">⏮</button>
-                                <button id="play-pause-btn" class="icon-button primary" type="button" title="Reproduzir" aria-label="Reproduzir"><span id="play-pause-icon" aria-hidden="true">▶</span></button>
-                                <button id="next-btn" class="icon-button" type="button" title="Próxima faixa" aria-label="Próxima faixa">⏭</button>
+                <section id="player-view" hidden>
+                    <div class="player-header">
+                        <button id="back-btn" class="back-button" type="button" aria-label="Voltar para a escolha de pastas"><span aria-hidden="true">←</span> Voltar às pastas</button>
+                        <span id="player-folder-label" class="collection-name"></span>
+                    </div>
+                    <section class="player-panel" aria-label="Player de áudio">
+                        <div class="now-playing"><div><h3 id="current-song-title">Selecione uma faixa</h3><p id="player-status" role="status" aria-live="polite"></p></div></div>
+                        <div class="controls">
+                            <div class="time-row"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
+                            <input type="range" id="progress-bar" min="0" max="100" value="0" aria-label="Progresso da faixa">
+                            <div class="control-row">
+                                <button id="loop-btn" class="icon-button" type="button" title="Repetir faixa" aria-label="Repetir faixa" aria-pressed="false">↻</button>
+                                <div class="main-controls">
+                                    <button id="prev-btn" class="icon-button" type="button" title="Faixa anterior" aria-label="Faixa anterior">⏮</button>
+                                    <button id="play-pause-btn" class="icon-button primary" type="button" title="Reproduzir" aria-label="Reproduzir"><span id="play-pause-icon" aria-hidden="true">▶</span></button>
+                                    <button id="next-btn" class="icon-button" type="button" title="Próxima faixa" aria-label="Próxima faixa">⏭</button>
+                                </div>
+                                <div class="volume-control"><span id="volume-icon" class="volume-symbol" aria-hidden="true">🔊</span><input type="range" id="volume-slider" min="0" max="100" value="100" aria-label="Volume"></div>
                             </div>
-                            <div class="volume-control"><span id="volume-icon" class="volume-symbol" aria-hidden="true">🔊</span><input type="range" id="volume-slider" min="0" max="100" value="100" aria-label="Volume"></div>
                         </div>
-                    </div>
-                </section>
-                <section class="track-section" aria-labelledby="track-heading">
-                    <div class="track-toolbar">
-                        <div class="section-heading"><span class="step-number" aria-hidden="true">2</span><h2 id="track-heading">Escolha uma faixa</h2></div>
-                        <span id="selected-folder-label">Nenhuma pasta selecionada</span>
-                    </div>
-                    <div id="playlist" class="playlist"><div class="loading-state">Carregando o acervo…</div></div>
+                    </section>
+                    <section class="track-section" aria-labelledby="track-heading">
+                        <div class="track-toolbar">
+                            <div class="section-heading"><h2 id="track-heading">Escolha uma faixa</h2></div>
+                            <span id="selected-folder-label"></span>
+                        </div>
+                        <div id="playlist" class="playlist"></div>
+                    </section>
                 </section>
             </div>
             <footer class="footer">Uso interno dos membros do Coral Alvorada.</footer>
@@ -179,9 +191,13 @@
             { path: 'Pasta-5', label: 'Pasta 5' }
         ];
         const audioPlayer = document.getElementById('audio-player');
+        const homeView = document.getElementById('home-view');
+        const playerView = document.getElementById('player-view');
+        const backBtn = document.getElementById('back-btn');
         const folderGrid = document.getElementById('folder-grid');
         const playlistEl = document.getElementById('playlist');
         const selectedFolderLabel = document.getElementById('selected-folder-label');
+        const playerFolderLabel = document.getElementById('player-folder-label');
         const currentSongTitleEl = document.getElementById('current-song-title');
         const playerStatusEl = document.getElementById('player-status');
         const playPauseBtn = document.getElementById('play-pause-btn');
@@ -265,11 +281,9 @@
                     catalog.set(folder.path, tracks);
                 }
                 renderFolderButtons(false);
-                playlistEl.innerHTML = '<div class="empty-state">Escolha uma pasta acima para ver suas faixas.</div>';
             } catch (error) {
                 console.error('Não foi possível carregar o acervo.', error);
-                renderFolderButtons(false);
-                playlistEl.innerHTML = '<div class="error-state">Não foi possível carregar o acervo. Verifique sua conexão e recarregue a página.</div>';
+                folderGrid.innerHTML = '<div class="error-state" style="grid-column: 1 / -1">Não foi possível carregar o acervo. Verifique sua conexão e recarregue a página.</div>';
             }
         }
         function renderFolderButtons(loading) {
@@ -298,18 +312,42 @@
             setPlayingState(false); resetProgress();
             const folder = FOLDERS.find(item => item.path === folderPath);
             selectedFolderLabel.textContent = folder.label;
+            playerFolderLabel.textContent = folder.label;
             currentSongTitleEl.textContent = playlist.length ? 'Selecione uma faixa' : 'Esta pasta ainda está vazia';
             playerStatusEl.textContent = '';
+            homeView.hidden = true;
+            playerView.hidden = false;
             renderFolderButtons(false); renderPlaylist();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        function returnToHome() {
+            playRequested = false;
+            audioPlayer.pause();
+            audioPlayer.removeAttribute('src');
+            audioPlayer.load();
+            currentFolderPath = null;
+            playlist = [];
+            currentSongIndex = -1;
+            sourceAttempt = 0;
+            playerView.hidden = true;
+            homeView.hidden = false;
+            currentSongTitleEl.textContent = 'Selecione uma faixa';
+            playerStatusEl.textContent = '';
+            selectedFolderLabel.textContent = '';
+            playerFolderLabel.textContent = '';
+            playlistEl.innerHTML = '';
+            setPlayingState(false);
+            resetProgress();
+            renderFolderButtons(false);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         function renderPlaylist() {
             playlistEl.innerHTML = '';
             if (playlist.length === 0) { playlistEl.innerHTML = '<div class="empty-state">Nenhuma faixa nesta pasta por enquanto.</div>'; return; }
             playlist.forEach((song,index) => {
                 const button = document.createElement('button'); button.type = 'button'; button.className = 'playlist-item'; button.dataset.index = String(index);
-                const number = document.createElement('span'); number.className = 'track-number'; number.textContent = String(index + 1).padStart(2,'0');
                 const name = document.createElement('span'); name.className = 'track-name'; name.textContent = displayName(song.name);
-                button.append(number,name); button.addEventListener('click', () => loadSong(index)); playlistEl.appendChild(button);
+                button.append(name); button.addEventListener('click', () => loadSong(index)); playlistEl.appendChild(button);
             });
             updatePlayingUI();
         }
@@ -392,6 +430,7 @@
         function toggleLoop() { isLooping = !isLooping; audioPlayer.loop = isLooping; loopBtn.classList.toggle('active',isLooping); loopBtn.setAttribute('aria-pressed',String(isLooping)); }
         function setVolume() { const volume = Number(volumeSlider.value) / 100; audioPlayer.volume = volume; volumeIcon.textContent = volume === 0 ? '🔇' : volume < .5 ? '🔉' : '🔊'; }
         playPauseBtn.addEventListener('click',togglePlayPause);
+        backBtn.addEventListener('click',returnToHome);
         prevBtn.addEventListener('click',playPrevious);
         nextBtn.addEventListener('click',playNext);
         loopBtn.addEventListener('click',toggleLoop);
