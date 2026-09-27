@@ -1,0 +1,9 @@
+---
+layout: null
+---
+[
+{% assign audio_files = site.static_files | where: "extname", ".mp3" %}
+{% for file in audio_files %}
+  {"path": {{ file.path | remove_first: "/" | jsonify }}}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]

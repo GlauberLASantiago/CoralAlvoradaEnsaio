@@ -40,12 +40,13 @@ O projeto foi criado para centralizar os materiais de ensaio do **Coral Alvorada
 
 ## ⚙️ Como funciona
 
-A aplicação consulta a API do GitHub para listar os arquivos de áudio disponíveis no repositório configurado. Em seguida:
+A aplicação usa um catálogo gerado automaticamente pelo GitHub Pages e, se necessário, consulta a API do GitHub para listar os arquivos de áudio. Em seguida:
 
-1. filtra os arquivos com extensão `.mp3`;
-2. monta automaticamente a playlist;
-3. permite ao usuário escolher ou controlar a reprodução das faixas;
-4. toca os áudios diretamente a partir dos links de download do GitHub.
+1. organiza os arquivos `.mp3` nas seis coleções configuradas;
+2. permite ao usuário escolher primeiro uma pasta;
+3. apresenta somente as faixas daquela pasta;
+4. permite controlar a reprodução das faixas;
+5. toca os áudios diretamente do site ou por links alternativos do GitHub.
 
 O player ignora arquivos vazios ou menores que 1 KB, tenta mais de um endpoint do GitHub quando uma fonte falha e exibe uma mensagem clara caso o arquivo enviado não seja um MP3 válido.
 
@@ -103,6 +104,17 @@ O projeto está concentrado em um único arquivo HTML com:
 - **HTML**: estrutura visual do player e da playlist
 - **CSS**: personalização visual e identidade do projeto
 - **JavaScript**: carregamento dos arquivos do GitHub, lógica do player e interações do usuário
+
+Os áudios são organizados desta forma:
+
+- `Cantata-E-Era-Natal`: arquivos cujo nome começa com `0`;
+- `Pasta-1`: arquivos cujo nome começa com `1`;
+- `Pasta-2`: arquivos cujo nome começa com `2`;
+- `Pasta-3`: arquivos cujo nome começa com `3`;
+- `Pasta-4`: arquivos cujo nome começa com `4`;
+- `Pasta-5`: arquivos cujo nome começa com `5`.
+
+O arquivo `catalog.json` é processado durante o deploy e permite que novos MP3 enviados a essas pastas apareçam automaticamente no site.
 
 ## ✅ Possíveis usos
 
